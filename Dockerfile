@@ -1,5 +1,11 @@
 FROM ncsa/toolserver:1.0
 
+COPY ./toolconfig.json /usr/local/data
+COPY ./templates /usr/local/data/templates
+COPY ./toolserver /usr/local/bin
+COPY ./clowder-xfer /usr/local/bin
+COPY ./entrypoint.sh /entrypoint.sh
+
 RUN apt-get update -y && apt-get install curl nginx vim wget -y
 
 ENV DOCKER_BUCKET get.docker.com
@@ -15,13 +21,6 @@ RUN set -x \
     && chmod +x /usr/local/bin/dind \
     && pip install jinja2 
      
-
-
-COPY ./toolconfig.json /usr/local/data
-COPY ./templates /usr/local/data/templates
-COPY ./toolserver /usr/local/bin
-COPY ./clowder-xfer /usr/local/bin
-COPY ./entrypoint.sh /entrypoint.sh
 
 ENV TOOLSERVER_PORT 8083
 
