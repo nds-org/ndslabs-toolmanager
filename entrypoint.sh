@@ -9,8 +9,10 @@ if [ "$1" = "toolserver" ]; then
         --registry-mirror=http://docker-cache.default:5001 \
         --storage-driver=overlay  > dind.log 2>&1 &
 
-   toolserver
+   nginx &
 
+   toolserver &
+   sleep infinity
 else
    exec "$@"
 fi

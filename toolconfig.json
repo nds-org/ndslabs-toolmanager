@@ -1,8 +1,15 @@
 {
+  "jupyterlab": {
+    "toolName": "JupyterLab",
+    "description": "JupyterLab environment",
+    "dockerSrc": "ndslabs/jupyterlab",
+    "dataPath": "/home/jovyan/work",
+    "mappedPort": "8888/tcp"
+  },
   "ipython": {
-    "toolName": "Jupyter",
+    "toolName": "JupyterNotebook",
     "description": "Basic Jupyter notebook environment",
-    "dockerSrc": "jupyter/scipy-notebook",
+    "dockerSrc": "jupyter/minimal-notebook",
     "dataPath": "/home/jovyan/work",
     "mappedPort": "8888/tcp"
   },

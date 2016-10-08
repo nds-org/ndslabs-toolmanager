@@ -1,0 +1,37 @@
+        location /{{ id }}/ {
+
+            proxy_set_header Host                   $host;
+
+            # Pass Real IP
+            proxy_set_header X-Real-IP              $remote_addr;
+
+            # Allow websocket connections
+            proxy_set_header                        Upgrade           $http_upgrade;
+            proxy_set_header                        Connection        $connection_upgrade;
+
+            proxy_set_header X-Forwarded-For        $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host       $host;
+            proxy_set_header X-Forwarded-Port       $server_port;
+            proxy_set_header X-Forwarded-Proto      $pass_access_scheme;
+
+            # mitigate HTTPoxy Vulnerability
+            # https://www.nginx.com/blog/mitigating-the-httpoxy-vulnerability-with-nginx/
+            proxy_set_header Proxy                  "";
+
+            proxy_connect_timeout                   5s;
+            proxy_send_timeout                      60s;
+            proxy_read_timeout                      60s;
+
+            proxy_buffering                         off;
+
+            proxy_http_version                      1.1;
+
+            sub_filter_types text/javascript text/css application/javascript;
+            sub_filter      '/lab/' '/{{ id }}/lab/';
+            sub_filter      '/static/' '/{{ id }}/static/';
+            sub_filter      'api/' '{{ id }}/api/';
+            sub_filter      'terminals/' '{{ id }}/terminals/';
+            sub_filter_once off;
+            proxy_pass http://localhost:{{ port }}/;
+            proxy_redirect / http://$host/{{ id }}/; 
+        }
