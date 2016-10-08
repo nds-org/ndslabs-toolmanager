@@ -90,16 +90,17 @@ class ToolInstance(restful.Resource):
         #host = request.url_root[:request.url_root.find(":"+PORTNUM)]
         host = os.environ["NDSLABS_HOSTNAME"]
 
-        # Create the tool container
+        # Create the tool container -P Publish all exposed ports
         toolCmd = "docker create -P -v "+cfg['dataPath']+"/data "+cfg['dockerSrc']
+        print toolCmd
         containerID = os.popen(toolCmd).read().rstrip()
         print "CONTAINER ID: ", containerID
 
-        # Do data transfer container in another container
-        xferCmd = 'docker run --rm -i --volumes-from '+containerID+' craigwillis/toolserver:latest /usr/local/bin/clowder-xfer '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']
+        # Do data transfer to container
+        xferCmd = '/usr/local/bin/clowder-xfer '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
         os.popen(xferCmd).read().rstrip()
 
-        # Start the tool
+        # Start the requested tool container
         startCmd = 'docker start '+containerID
         os.popen(startCmd).read().rstrip()
 
