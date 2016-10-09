@@ -6,13 +6,6 @@
     "dataPath": "/home/jovyan/work",
     "mappedPort": "8888/tcp"
   },
-  "ipython": {
-    "toolName": "JupyterNotebook",
-    "description": "Basic Jupyter notebook environment",
-    "dockerSrc": "jupyter/minimal-notebook",
-    "dataPath": "/home/jovyan/work",
-    "mappedPort": "8888/tcp"
-  },
   "rstudio": {
     "toolName": "RStudio",
     "description": "RStudio analysis environment",
