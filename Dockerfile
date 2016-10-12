@@ -8,10 +8,6 @@ COPY templates /usr/local/data/templates
 COPY toolserver clowder-xfer /usr/local/bin/
 COPY entrypoint.sh /entrypoint.sh
 
-# ToolManager UI + dependencies
-ENV HTML_DIR /usr/share/nginx/html/
-COPY package.json bower.json index.html app ${HTML_DIR}
-
 # Install nginx / Node.js / npm
 RUN apt-get -qq update && \
     apt-get -qq install \
@@ -46,6 +42,8 @@ RUN set -x \
     rm -rf /tmp/*
     
 # Install npm / bower dependencies
+ENV HTML_DIR /usr/share/nginx/html/
+COPY package.json bower.json ${HTML_DIR}
 RUN cd ${HTML_DIR} && \
     npm install -g bower && \
     npm install && \
@@ -56,3 +54,6 @@ ENV TOOLSERVER_PORT 8083
 EXPOSE 8082
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["toolserver"]
+
+# Install ToolManager UI
+COPY index.html app ${HTML_DIR}

@@ -5,11 +5,10 @@ angular.module('toolmgr', [
   'ngRoute',
   'ngResource',
   'toolmgr.tools',
-  'toolmgr.instances',
-  'toolmgr.services'
+  'toolmgr.instances'
 ]).
 config(['$locationProvider', '$routeProvider', function($locationProvider, $routeProvider) {
   $locationProvider.hashPrefix('!');
 
-  $routeProvider.otherwise({redirectTo: '/view1'});
+  $routeProvider.otherwise({redirectTo: '/instances'});
 }]);

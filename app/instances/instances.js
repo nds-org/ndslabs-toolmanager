@@ -5,16 +5,18 @@ angular.module('toolmgr.instances', ['ngRoute'])
 .config(['$routeProvider', function($routeProvider) {
   $routeProvider.when('/instances', {
     templateUrl: 'instances/instances.html',
-    controller: 'InstancesCtrl'
+    controller: 'InstancesCtrl',
+    controllerAs: 'vm'
   });
 }])
 
 .controller('InstancesCtrl', [function() {
     var vm = this;
-    this.wired = true;
+    vm.wired = true;
 }]);
 
 
+/*
 function InstancesCtrl() {
   this.name = 'John Smith';
   this.contacts = [
@@ -39,4 +41,4 @@ InstancesCtrl.prototype.removeContact = function(contactToRemove) {
 InstancesCtrl.prototype.clearContact = function(contact) {
   contact.type = 'phone';
   contact.value = '';
-};
+};*/
