@@ -1,0 +1,17 @@
+{
+  "name": "ndslabs-toolmanager",
+  "private": true,
+  "version": "0.0.1",
+  "description": "A simple UI / API for running tools next to your data using Docker",
+  "repository": "https://github.com/nds-org/ndslabs-toolmanager",
+  "license": "BSD-3",
+  "devDependencies": {
+    "bower": "^1.7.7"
+  },
+  "scripts": {
+    "postinstall": "bower install",
+
+    "prestart": "npm install",
+    "start": "nginx"
+  }
+}
