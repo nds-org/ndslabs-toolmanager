@@ -14,9 +14,6 @@ COPY data /usr/local/data/
 COPY api /usr/local/bin/
 COPY entrypoint.sh /entrypoint.sh
 
-# ToolManager UI
-COPY js /usr/share/nginx/html/
-
 # Install nginx / Node.js / npm
 RUN apt-get -qq update && \
     apt-get -qq install \
@@ -35,6 +32,7 @@ RUN apt-get -qq update && \
     rm -rf /var/cache/apk/* /tmp/*
     
 # Install npm / bower dependencies + ToolMaanger UI
+COPY js /usr/share/nginx/html/
 RUN cd /usr/share/nginx/html/ && \
     npm install -g bower && \
     npm install && \
