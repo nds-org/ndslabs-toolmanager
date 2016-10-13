@@ -5,53 +5,11 @@
 angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
 
 /**
- * Configure "Instances" REST API Client
+ * Configure "ToolInstance" REST API Client
  */
-.factory('ToolInstances', [ '$resource', function($resource) {
-  return $resource('/toolserver/instances/:ownerId', {ownerId:'@id'});
-}])
-
-/**
- * Generates a new ToolInstance object using the provided parameters.
- * 
- * TODO: Should we handle multiple dataset (i.e. arrays)?
- * 
- *  Inputs:
- *  -toolKey: string
- *  -ownerId: string or int (API-dependent)
- *  -apiKey: string or int (API-dependent)
- *  -dataset: {} (must be serializable?)
- *    -name: string
- *    -data: [] or {}? (API-dependent / data type)
- *    -path: string
- *    -id: string or int (API-dependent)
- *  
- *  Output: {}
- *  -dataset
- *  -datasetId
- *  -datapath
- *  -datasetName
- *  -key
- *  -name
- *  -ownerId
- */
-.service('ToolInstance', [function() {
-  return function(toolKey, ownerId, apiKey, dataset) {
-    var toolInstance = {};
-    
-    toolInstance.name = toolKey;
-    toolInstance.ownerId = ownerId;
-    toolInstance.apiKey = apiKey;
-    
-    if (dataset) {
-      toolInstance.dataset = dataset.data;
-      toolInstance.datasetName = dataset.name;
-      toolInstance.datasetId = dataset.id;
-      toolInstance.datapath = dataset.path;
-    }
-    
-    return toolInstance;
-  };
+.factory('ToolInstance', [ '$resource', function($resource) {
+  // TODO: How to handle "maps" as $resource?
+  return $resource('/toolserver/instances/:id', { id:'@id' });
 }])
 
 /**
@@ -61,39 +19,64 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
   $routeProvider.when('/instances', {
     templateUrl: 'instances/instances.html',
     controller: 'ToolInstancesCtrl',
-    controllerAs: 'vm'
+    controllerAs: 'instances'
   });
 }])
 
 /**
  * The controller for our "ToolInstances" view
  */
-.controller('ToolInstancesCtrl', [ '$log', '$routeParams', 'ToolInstances', 'ToolInstance', function($log, $routeParams, ToolInstances, ToolInstance) {
-    var vm = this;
+.controller('ToolInstancesCtrl', [ '$log', '$routeParams', 'ToolInstance', 'Tool',
+        function($log, $routeParams, ToolInstance, Tool) {
+    var instances = this;
     
-    /* Input parameters */
-    vm.toolKey = $routeParams['name'] || 'jupyter';
-    vm.apiKey = $routeParams['apiKey'] || '';
-    vm.ownerId = $routeParams['ownerId'] || ''
-    vm.dataset = {
-      name: $routeParams['datasetName'] || '',
-      id: $routeParams['datasetId'] || '',
-      data: $routeParams['dataset'] || [],
-      path: $routeParams['datasetPath'] || ''
-    };
+    /* Tool parameters */
+    instances.template = {}; //new ToolInstance();
+    instances.template.name = $routeParams['name'] || 'jupyterlab';
     
-    vm.generate = function(toolKey, apiKey, ownerId, dataset) {
-      var toolInstance = new ToolInstance(toolKey, apiKey, ownerId, dataset);
-      ToolInstance.post({}, toolInstance, function() {
-        $log.debug('Successfully created ' + toolKey);
+    /* API parameters */
+    instances.template.key = $routeParams['key'] || '';
+    instances.template.ownerId = $routeParams['ownerId'] || '';
+    
+    /* Dataset parameters */
+    instances.template.datasetName = $routeParams['datasetName'] || '';
+    instances.template.datasetId = $routeParams['datasetId'] || '';
+    instances.template.dataset = $routeParams['dataset'] || '';
+    
+    /* Creates a new ToolInstance from the template */
+    instances.create = function(template) {
+      var newInstance = new ToolInstance(instances.template);
+      newInstance.$save(function() {
+        $log.debug('Successfully created ToolInstance:' + template.name);
       }, function() {
-        $log.error('Failed creating ' + toolKey);
+        $log.error('Failed creating ToolInstance:' + template.name);
       });
     };
     
-    vm.instances = ToolInstances.get({ ownerId: $routeParams['ownerId'] || '' }, function() {
-      $log.debug('Successfully populated ToolInstances!');
-    }, function() {
-      $log.error('Failed populating ToolInstances!');
-    });
+    /* Retrieves the list of ToolInstances */
+    (instances.retrieve = function() {
+      instances.list = ToolInstance.get({ ownerId: $routeParams['ownerId'] || '' }, function() {
+        $log.debug('Successfully populated ToolInstances!');
+      }, function() {
+        $log.error('Failed populating ToolInstances!');
+      });
+    })();
+    
+    /* Updates an existing ToolInstance */
+    instances.update = function(instance) {
+      instance.$save(function() {
+        $log.debug('Successfully saved ToolInstance:' + instance.name);
+      }, function() {
+        $log.error('Failed saving ToolInstance:' + instance.name);
+      });
+    };
+    
+    /* Deletes an existing ToolInstance */
+    instances.delete = function(instance) {
+      instance.$delete(function() {
+        $log.debug('Successfully deleted ToolInstance:' + instance.name);
+      }, function() {
+        $log.error('Failed deleting ToolInstance:' + instance.name);
+      });
+    };
 }]);

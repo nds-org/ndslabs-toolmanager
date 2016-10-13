@@ -10,8 +10,8 @@ angular.module('toolmgr', [
   'toolmgr.instances'
 ])
 
-.config(['$locationProvider', '$routeProvider', function($locationProvider, $routeProvider) {
+.config(['$locationProvider', '$logProvider', '$routeProvider', function($locationProvider, $logProvider, $routeProvider) {
   $locationProvider.hashPrefix('!');
-
-  $routeProvider.otherwise({redirectTo: '/instances'});
+  $logProvider.debugEnabled(false);
+  $routeProvider.otherwise({redirectTo: '/tools'});
 }]);

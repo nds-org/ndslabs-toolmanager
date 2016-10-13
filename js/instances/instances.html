@@ -1,2 +1,10 @@
 <p>Instances:</p>
-<pre>{{ vm.instances | json }}</pre>
+<!-- <pre>{{ instances.list | json }}</pre> -->
+
+<ul>
+    <li ng-repeat="(id, instance) in instances.list">
+        {{ id }} {{ instance.name }}
+        <button ng-click="instances.update(instance)">Update</button>
+        <button ng-click="instances.delete(instance)">Delete</button>
+    </li>
+</ul>
