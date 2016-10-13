@@ -1,12 +1,21 @@
+#!/bin/bash
+#
+# Usage: docker build -t toolmanager .
+#
+
+
+
 FROM ncsa/toolserver:1.0
 
 # Managed Data Tools
-COPY toolconfig.json /usr/local/data
-COPY templates /usr/local/data/templates
+COPY data /usr/local/data/
 
 # ToolManager API
-COPY toolserver clowder-xfer /usr/local/bin/
+COPY api /usr/local/bin/
 COPY entrypoint.sh /entrypoint.sh
+
+# ToolManager UI
+COPY js /usr/share/nginx/html/
 
 # Install nginx / Node.js / npm
 RUN apt-get -qq update && \
@@ -26,9 +35,7 @@ RUN apt-get -qq update && \
     rm -rf /var/cache/apk/* /tmp/*
     
 # Install npm / bower dependencies + ToolMaanger UI
-ENV HTML_DIR /usr/share/nginx/html/
-COPY package.json bower.json app index.html ${HTML_DIR}
-RUN cd ${HTML_DIR} && \
+RUN cd /usr/share/nginx/html/ && \
     npm install -g bower && \
     npm install && \
     bower install --config.interactive=false --allow-root && \
@@ -41,9 +48,8 @@ ENV DIND_COMMIT 3b5fac462d21ca164b3778647420016315289034
 
 # Install Docker-in-Docker
 RUN set -x \
-    curl -fSL "https://${DOCKER_BUCKET}/builds/Linux/x86_64/docker-${DOCKER_VERSION}.tgz" -o docker.tgz \
-    tar -xzvf docker.tgz \
-    rm docker.tgz \
+    curl -fSL "https://${DOCKER_BUCKET}/builds/Linux/x86_64/docker-${DOCKER_VERSION}.tgz" -o /tmp/docker.tgz \
+    tar -xzvf /tmp/docker.tgz \
     docker -v \
     wget "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" -O /usr/local/bin/dind \
     chmod +x /usr/local/bin/dind \
