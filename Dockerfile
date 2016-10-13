@@ -24,6 +24,15 @@ RUN apt-get -qq update && \
     apt-get -qq autoclean && \
     apt-get -qq clean all && \
     rm -rf /var/cache/apk/* /tmp/*
+    
+# Install npm / bower dependencies + ToolMaanger UI
+ENV HTML_DIR /usr/share/nginx/html/
+COPY package.json bower.json app index.html ${HTML_DIR}
+RUN cd ${HTML_DIR} && \
+    npm install -g bower && \
+    npm install && \
+    bower install --config.interactive=false --allow-root && \
+    rm -rf /tmp/*
 
 # Set up Docker-in-Docker parameters
 ENV DOCKER_BUCKET get.docker.com
@@ -40,20 +49,8 @@ RUN set -x \
     chmod +x /usr/local/bin/dind \
     pip install jinja2 && \
     rm -rf /tmp/*
-    
-# Install npm / bower dependencies
-ENV HTML_DIR /usr/share/nginx/html/
-COPY package.json bower.json ${HTML_DIR}
-RUN cd ${HTML_DIR} && \
-    npm install -g bower && \
-    npm install && \
-    bower install --config.interactive=false --allow-root && \
-    rm -rf /tmp/*
      
 ENV TOOLSERVER_PORT 8083
 EXPOSE 8082
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["toolserver"]
-
-# Install ToolManager UI
-COPY index.html app ${HTML_DIR}
