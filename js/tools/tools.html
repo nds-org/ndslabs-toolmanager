@@ -1,15 +1,14 @@
-<h2>Create new Tool</h2>
+<h2>Launch Tool Instance</h2>
 
 <div ng-controller="ToolInstancesCtrl as instances">
-    <pre>{{ instances.template | json }}</pre>
     <form ng-submit="instances.create(instances.template)">
         
-        <p>Tool:</p>
+        Tool:
         <select ng-options="key as tool.name for (key, tool) in tools.list track by key"
                 ng-model="tools.selected" >
-        </select>
+        </select><br/>
         
-        Name:<br/>
+        Name: <input ng-model="instances.template.name" /><br/>
             
         API Key: <input ng-model="instances.template.key" /><br/>
         Owner Id: <input ng-model="instances.template.ownerId" /><br/>
@@ -20,5 +19,6 @@
     <button ng-click="instances.create(instances.template)">Create</button>
 </div>
 
+<pre>{{ instances.template | json }}</pre>
 
 <!-- <pre>{{ tools.list | json }}</pre> -->

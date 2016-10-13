@@ -18,7 +18,7 @@ angular.module('toolmgr.logs', ['ngRoute', 'ngResource'])
   $routeProvider.when('/logs', {
     templateUrl: 'logs/logs.html',
     controller: 'LogsCtrl',
-    controllerAs: 'vm'
+    controllerAs: 'logs'
   });
 }])
 
@@ -26,9 +26,9 @@ angular.module('toolmgr.logs', ['ngRoute', 'ngResource'])
  * The controller for our "Logs" view
  */
 .controller('LogsCtrl', [ '$log', '$routeParams', 'ToolManagerLogs',  function($log, $routeParams, ToolManagerLogs) {
-    var vm = this;
+    var logs = this;
     
-    vm.logs = ToolManagerLogs.get({}, function() {
+    logs.all = ToolManagerLogs.get({}, function() {
       $log.debug('Successfully populated ToolManagerLogs!');
     }, function() {
       $log.error('Failed populating ToolManagerLogs!');

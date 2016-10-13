@@ -2,7 +2,7 @@
 
 'use strict';
 
-angular.module('toolmgr.tools', ['ngRoute', 'ngResource' ])
+angular.module('toolmgr.tools', ['ngRoute', 'ngResource', 'toolmgr.instances' ])
 
 /**
  * Configure "Toolbox" REST API Client
@@ -32,7 +32,6 @@ angular.module('toolmgr.tools', ['ngRoute', 'ngResource' ])
     (tools.retrieve = function() {
       tools.list = Tool.get({}, function() {
         $log.debug('Successfully populated Tools!');
-        tools.selected = (tools.list.length > 0 ? tools.list[0] : null);
       }, function() {
         $log.error('Failed populating Tools!');
       });

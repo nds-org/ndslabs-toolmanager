@@ -32,7 +32,7 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
     
     /* Tool parameters */
     instances.template = {}; //new ToolInstance();
-    instances.template.name = $routeParams['name'] || 'jupyterlab';
+    instances.template.name = $routeParams['name'] || '';
     
     /* API parameters */
     instances.template.key = $routeParams['key'] || '';
