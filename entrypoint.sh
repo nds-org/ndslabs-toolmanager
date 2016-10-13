@@ -11,7 +11,7 @@ if [ "$1" = "toolserver" ]; then
 
    nginx &
 
-   toolserver.py
+   toolserver
 else
    exec "$@"
 fi

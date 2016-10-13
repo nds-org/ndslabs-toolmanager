@@ -8,8 +8,16 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
  * Configure "ToolInstance" REST API Client
  */
 .factory('ToolInstance', [ '$resource', function($resource) {
+  // TODO: How to handle "maps" with $resource?
+  return $resource('/toolserver/instances/:toolPath', { toolPath:'@toolPath' });
+}])
+
+/**
+ * Configure "ToolInstance" REST API Client
+ */
+.factory('Instances', [ '$resource', function($resource) {
   // TODO: How to handle "maps" as $resource?
-  return $resource('/toolserver/instances/:id', { id:'@id' });
+  return $resource('/toolserver/instances', {});
 }])
 
 /**
@@ -26,8 +34,8 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
 /**
  * The controller for our "ToolInstances" view
  */
-.controller('ToolInstancesCtrl', [ '$log', '$routeParams', 'ToolInstance', 'Tool',
-        function($log, $routeParams, ToolInstance, Tool) {
+.controller('ToolInstancesCtrl', [ '$log', '$routeParams', 'Instances', 'ToolInstance', 'Tools',
+        function($log, $routeParams, Instances, ToolInstance, Tools) {
     var instances = this;
     
     /* Tool parameters */
@@ -46,6 +54,10 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
     /* Creates a new ToolInstance from the template */
     instances.create = function(template) {
       var newInstance = new ToolInstance(instances.template);
+      newInstance.toolPath = Tools.selected;
+      
+      debugger;
+      
       newInstance.$save(function() {
         $log.debug('Successfully created ToolInstance:' + template.name);
       }, function() {
@@ -55,7 +67,7 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
     
     /* Retrieves the list of ToolInstances */
     (instances.retrieve = function() {
-      instances.list = ToolInstance.get({ ownerId: $routeParams['ownerId'] || '' }, function() {
+      instances.list = Instances.get({ ownerId: $routeParams['ownerId'] || '' }, function() {
         $log.debug('Successfully populated ToolInstances!');
       }, function() {
         $log.error('Failed populating ToolInstances!');
