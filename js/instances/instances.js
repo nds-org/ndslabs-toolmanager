@@ -9,7 +9,7 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
  */
 .factory('ToolInstance', [ '$resource', function($resource) {
   // TODO: How to handle "maps" with $resource?
-  return $resource('/toolserver/instances/:toolPath', { toolPath:'@toolPath' });
+  return $resource('/api/instances/:toolPath', { toolPath:'@toolPath' });
 }])
 
 /**
@@ -17,7 +17,7 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
  */
 .factory('Instances', [ '$resource', function($resource) {
   // TODO: How to handle "maps" as $resource?
-  return $resource('/toolserver/instances', {});
+  return $resource('/api/instances', {});
 }])
 
 /**
