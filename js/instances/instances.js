@@ -45,6 +45,7 @@ angular.module('toolmgr.instances', ['ngRoute', 'ngResource'])
     /* API parameters */
     instances.template.key = $routeParams['key'] || '';
     instances.template.ownerId = $routeParams['ownerId'] || '';
+    instances.template.source = $routeParams['source'] || '';
     
     /* Dataset parameters */
     instances.template.datasetName = $routeParams['datasetName'] || '';
