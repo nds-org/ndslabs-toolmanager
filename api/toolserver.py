@@ -21,6 +21,7 @@ post_parser.add_argument('datasetId')   # Dataset ID separate from full path, fo
 post_parser.add_argument('datasetName') # Dataset name for generating upload history
 post_parser.add_argument('key')         # API key
 post_parser.add_argument('ownerId')     # UUID of user who is creating this instance
+post_parser.add_argument('source')      # Source application
 
 put_parser = reqparse.RequestParser()
 put_parser.add_argument('id')           # tool containerID to upload dataset into
@@ -29,6 +30,7 @@ put_parser.add_argument('datasetId')    # Dataset ID separate from full path, fo
 put_parser.add_argument('datasetName')  # Dataset name for generating upload history
 put_parser.add_argument('key')          # API key
 put_parser.add_argument('uploaderId')   # UUID of user who is uploading this dataset
+put_parser.add_argument('source')       # Source application
 
 logging.basicConfig(level=logging.DEBUG)
 # TODO: Move these parameters somewhere else?
@@ -62,6 +64,7 @@ class ToolInstance(restful.Resource):
                 "url": instanceAttrs[containerID]["url"],
                 "created": instanceAttrs[containerID]["created"],
                 "ownerId": instanceAttrs[containerID]["ownerId"],
+                "source": instanceAttrs[containerID]["source"],
                 "uploadHistory": instanceAttrs[containerID]["uploadHistory"],
                 "toolName": cfg["toolName"],
                 "description": cfg["description"]
@@ -94,6 +97,7 @@ class ToolInstance(restful.Resource):
         logging.debug("ToolInstance POST toolPath=" + toolPath + 
              "\n\t dataset=" + str(args['dataset']) + 
              "\n\t datasetId=" + str(args['datasetId']) + 
+             "\n\t source=" + str(args['source']) + 
              "\n\t key=" + str(args['key']) )
 
         # Create the tool container -P Publish all exposed ports
@@ -103,7 +107,10 @@ class ToolInstance(restful.Resource):
         logging.debug("CONTAINER ID: " + containerID)
 
         # Do data transfer to container
-        xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
+        if source  == "dataverse":
+            xferCmd = '/usr/local/bin/dataverse-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
+        else :
+            xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
         logging.debug("xferCmd " + xferCmd)
         os.popen(xferCmd).read().rstrip()
 
@@ -126,6 +133,7 @@ class ToolInstance(restful.Resource):
             "port": port,
             "created": currTime,
             "ownerId": str(args['ownerId']),
+            "source": str(args['source']),
             "uploadHistory": [{
                 "url":str(args['dataset']),
                 "time": currTime,
@@ -155,7 +163,10 @@ class ToolInstance(restful.Resource):
              "\n\t key=" + str(args['key']) )
 
         # Do data transfer container in another container
-        xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
+        if source  == "dataverse":
+            xferCmd = '/usr/local/bin/dataverse-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
+        else :
+            xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
         logging.debug("xferCmd " + xferCmd)
         os.popen(xferCmd).read().rstrip()
 
@@ -164,6 +175,7 @@ class ToolInstance(restful.Resource):
             "url": str(args["dataset"]),
             "time": arrow.now().isoformat(),
             "uploaderId": str(args['uploaderId']),
+            "source": str(args['source']),
             "datasetName": str(args['datasetName']),
             "datasetId": str(args['datasetId'])
         })
