@@ -107,7 +107,7 @@ class ToolInstance(restful.Resource):
         logging.debug("CONTAINER ID: " + containerID)
 
         # Do data transfer to container
-        if source  == "dataverse":
+        if str(args['source']) == 'dataverse':
             xferCmd = '/usr/local/bin/dataverse-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
         else :
             xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
@@ -163,7 +163,7 @@ class ToolInstance(restful.Resource):
              "\n\t key=" + str(args['key']) )
 
         # Do data transfer container in another container
-        if source  == "dataverse":
+        if str(args['source']) == 'dataverse':
             xferCmd = '/usr/local/bin/dataverse-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
         else :
             xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
