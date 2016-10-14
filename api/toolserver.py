@@ -2,6 +2,7 @@
 
 import os, json
 import arrow
+import logging
 from flask import Flask, request
 from flask.ext import restful
 from flask_restful import reqparse, abort, Api, Resource
@@ -14,28 +15,27 @@ id_parser = reqparse.RequestParser()
 id_parser.add_argument('id')
 
 post_parser = reqparse.RequestParser()
-post_parser.add_argument('name') # human-readable name to refer to instance for displaying running list
-post_parser.add_argument('dataset') # Clowder download path e.g. "http://0.0.0.0:9000/clowder/api/datasets/<ds_id>/download"
-post_parser.add_argument('datasetId') # Clowder dataset Id separate from full path, for generating upload history
-post_parser.add_argument('datasetName') # Clowder dataset name for generating upload history
-post_parser.add_argument('key') # Clowder key
-post_parser.add_argument('ownerId') # UUID of user in Clowder who is creating this instance
+post_parser.add_argument('name')        # human-readable name to refer to instance for displaying running list
+post_parser.add_argument('dataset')     # Dataset download URL e.g. "http://0.0.0.0:9000/clowder/api/datasets/<ds_id>/download"
+post_parser.add_argument('datasetId')   # Dataset ID separate from full path, for generating upload history
+post_parser.add_argument('datasetName') # Dataset name for generating upload history
+post_parser.add_argument('key')         # API key
+post_parser.add_argument('ownerId')     # UUID of user who is creating this instance
 
 put_parser = reqparse.RequestParser()
-put_parser.add_argument('id') # tool containerID to upload dataset into
-put_parser.add_argument('dataset') # Clowder download path e.g. "http://0.0.0.0:9000/clowder/api/datasets/<ds_id>/download"
-put_parser.add_argument('datasetId') # Clowder dataset Id separate from full path, for generating upload history
-put_parser.add_argument('datasetName') # Clowder dataset name for generating upload history
-put_parser.add_argument('key') # Clowder key
-put_parser.add_argument('uploaderId') # UUID of user in Clowder who is uploading this dataset
+put_parser.add_argument('id')           # tool containerID to upload dataset into
+put_parser.add_argument('dataset')      # Dataset download URL e.g. "http://0.0.0.0:9000/clowder/api/datasets/<ds_id>/download"
+put_parser.add_argument('datasetId')    # Dataset ID separate from full path, for generating upload history
+put_parser.add_argument('datasetName')  # Dataset name for generating upload history
+put_parser.add_argument('key')          # API key
+put_parser.add_argument('uploaderId')   # UUID of user who is uploading this dataset
 
+logging.basicConfig(level=logging.DEBUG)
 # TODO: Move these parameters somewhere else?
 PORTNUM = os.getenv('TOOLSERVER_PORT', "8083")
 configPath = "/usr/local/data/toolconfig.json"
 instancesPath = "/usr/local/data/instances.json"
 templatesPath = "/usr/local/data/templates/"
-
-
 
 """Allow remote user to get contents of toolserver logs"""
 class DockerLog(restful.Resource):
@@ -53,6 +53,7 @@ class ToolInstance(restful.Resource):
         args = id_parser.parse_args()
         cfg = config[toolPath]
         containerID = str(args['id'])
+        logging.debug("ToolInstance GET toolPath=" + toolPath + ", containerID=" + containerID) 
 
         if containerID in instanceAttrs:
             return {
@@ -72,6 +73,7 @@ class ToolInstance(restful.Resource):
         """ Delete a tool instance """
         args = id_parser.parse_args()
         containerID = str(args['id'])
+        logging.debug("ToolInstance DELETE toolPath=" + toolPath + ", containerID=" + containerID) 
 
         # Remove container
         cmd = 'docker rm -f -v '+containerID
@@ -89,23 +91,30 @@ class ToolInstance(restful.Resource):
         cfg = config[toolPath]
         #host = request.url_root[:request.url_root.find(":"+PORTNUM)]
         host = os.environ["NDSLABS_HOSTNAME"]
+        logging.debug("ToolInstance POST toolPath=" + toolPath + 
+             "\n\t dataset=" + str(args['dataset']) + 
+             "\n\t datasetId=" + str(args['datasetId']) + 
+             "\n\t key=" + str(args['key']) )
 
         # Create the tool container -P Publish all exposed ports
         toolCmd = "docker create -P -v "+cfg['dataPath']+"/data "+cfg['dockerSrc']
-        print toolCmd
+        logging.debug(toolCmd)
         containerID = os.popen(toolCmd).read().rstrip()
-        print "CONTAINER ID: ", containerID
+        logging.debug("CONTAINER ID: " + containerID)
 
         # Do data transfer to container
-        xferCmd = '/usr/local/bin/clowder-xfer '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
+        xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
+        logging.debug("xferCmd " + xferCmd)
         os.popen(xferCmd).read().rstrip()
 
         # Start the requested tool container
         startCmd = 'docker start '+containerID
+        logging.debug("startCmd " + startCmd)
         os.popen(startCmd).read().rstrip()
 
         # Get and remap port for tool
         portCmd = "docker inspect --format '{{(index (index .NetworkSettings.Ports \""+cfg['mappedPort']+"\") 0).HostPort}}' "+containerID
+        logging.debug("portCmd " + portCmd)
         port = os.popen(portCmd).read().rstrip()
 
         # Make a record of this container's URL for later reference
@@ -125,6 +134,7 @@ class ToolInstance(restful.Resource):
                 "datasetId": str(args['datasetId'])
             }]
         }
+        logging.debug(instanceAttrs[containerID])
 
         writeInstanceAttrsToFile()
 
@@ -139,9 +149,14 @@ class ToolInstance(restful.Resource):
         """ Download another dataset into container """
         args = put_parser.parse_args()
         containerID = str(args['id'])
+        logging.debug("ToolInstance PUT toolPath=" + toolPath + 
+             "\n\t dataset=" + str(args['dataset']) + 
+             "\n\t datasetId=" + str(args['datasetId']) + 
+             "\n\t key=" + str(args['key']) )
 
         # Do data transfer container in another container
-        xferCmd = 'docker run --rm -i --volumes-from '+str(args['id'])+' craigwillis/toolserver:latest /usr/local/bin/clowder-xfer '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath']
+        xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
+        logging.debug("xferCmd " + xferCmd)
         os.popen(xferCmd).read().rstrip()
 
 
@@ -163,28 +178,26 @@ class Toolbox(restful.Resource):
     def get(self):
         """ Get a list of eligible tool endpoints that can be called. If toolPath given, return details of specific tool """
 
+        logging.debug("Toolbox GET")
         tools = {}
         for toolPath in config.keys():
-            tools[toolPath] = {
-                "name": config[toolPath]["toolName"],
-                "description": config[toolPath]["description"]
-            }
+          tools[toolPath] = {
+            "name": config[toolPath]["toolName"],
+            "description": config[toolPath]["description"]
+          }
 
         return tools, 200
 
     def delete(self):
         """ Delete tool endpoint from config file """
-
         return 200
 
     def post(self):
         """ Add new tool endpoint to config file """
-
         return 201
 
     def put(self):
         """ Update existing tool endpoint in config file """
-
         return 200
 
 """Used to fetch entire set of running instances for populating manager list"""
@@ -192,6 +205,7 @@ class Instances(restful.Resource):
 
     def get(self):
         """ Return attributes of all running tool instances """
+        logging.debug("Instances GET")
         instances = {}
         for containerID in instanceAttrs:
             instances[containerID] = instanceAttrs[containerID]
