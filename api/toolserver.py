@@ -152,7 +152,7 @@ class Instance(restful.Resource):
 
         args = post_parser.parse_args()
         # Backwards compatibility - v1 used /instances/:toolPath?id= v2 uses /instances/:id
-        if cfg[id]:
+        if config[id]:
            toolPath = id
         else: 
            toolPath = str(args['toolPath'])
