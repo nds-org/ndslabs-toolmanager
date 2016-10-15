@@ -3,8 +3,10 @@
 import os, json
 import arrow
 import logging
+import subprocess
+import flask_restful as restful
 from flask import Flask, request
-from flask.ext import restful
+#from flask.ext import restful
 from flask_restful import reqparse, abort, Api, Resource
 from jinja2 import Template
 
@@ -32,6 +34,11 @@ put_parser.add_argument('key')          # API key
 put_parser.add_argument('uploaderId')   # UUID of user who is uploading this dataset
 put_parser.add_argument('source')       # Source application
 
+get_parser = reqparse.RequestParser()
+get_parser.add_argument('id')
+get_parser.add_argument('ownerId')      # UUID of user who created the instance
+get_parser.add_argument('source')       # Source application
+
 logging.basicConfig(level=logging.DEBUG)
 # TODO: Move these parameters somewhere else?
 PORTNUM = os.getenv('TOOLSERVER_PORT', "8083")
@@ -39,25 +46,69 @@ configPath = "/usr/local/data/toolconfig.json"
 instancesPath = "/usr/local/data/instances.json"
 templatesPath = "/usr/local/data/templates/"
 
-"""Allow remote user to get contents of toolserver logs"""
+"""Allow remote user to get contents of logs for container"""
 class DockerLog(restful.Resource):
 
+    def get(self, id):
+        logging.debug("DockerLog.log " + id)
+        p = subprocess.Popen(['docker', 'logs', id], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        out, err = p.communicate()
+        return out, 200
+
+
+class Instances(restful.Resource):
+    # Returns all running tool instances, optionally filtered by owner and/or source
     def get(self):
-        cmd = 'docker logs toolserver'
-        logtext = os.popen(cmd).read().rstrip()
-        return logtext, 200
 
-"""Main class for instances of tools"""
-class ToolInstance(restful.Resource):
+        args = get_parser.parse_args()
+        if args['ownerId']:
+           ownerId = str(args['ownerId'])
+        else:
+           ownerId = ""
 
-    def get(self, toolPath):
-        """ Get details of running instance """
+        if args['source']:
+           source = str(args['source'])
+        else:
+           source = ""
+
+        logging.debug("get_instances" + " ownerId=" + ownerId + "source=" + source)
+        instances = {}
+        for containerID in instanceAttrs:
+            if len(ownerId) > 0 and instanceAttrs[containerID]['ownerId'] != ownerId:
+               continue 
+
+            if len(source) > 0 and instanceAttrs[containerID]['source'] != source:
+               continue 
+
+            instances[containerID] = instanceAttrs[containerID]
+
+            # Add some additional tool info from the config data before returning
+            cfg = config[instances[containerID]["toolPath"]]
+            instances[containerID]["toolName"] = cfg["toolName"]
+            instances[containerID]["description"] = cfg["description"]
+
+        return instances, 200
+
+# Main class for instances of tools
+class Instance(restful.Resource):
+
+    # Get details of running instance
+    def get(self, id):
         args = id_parser.parse_args()
-        cfg = config[toolPath]
-        containerID = str(args['id'])
-        logging.debug("ToolInstance GET toolPath=" + toolPath + ", containerID=" + containerID) 
+
+        # Backwards compatibility - v1 used /instances/:toolPath?id= v2 uses /instances/:id
+        if args['id']:
+           containerID = str(args['id'])
+           toolPath = id
+        else: 
+           containerID = id
+           toolPath = instanceAttrs[containerID]["toolPath"]
+
+        logging.debug("Instance.get toolPath=" + toolPath + ", containerID=" + containerID) 
 
         if containerID in instanceAttrs:
+            toolPath = instanceAttrs[containerID]['toolPath']
+            cfg = config[toolPath]
             return {
                 "toolPath": toolPath,
                 "name": instanceAttrs[containerID]["name"],
@@ -72,11 +123,19 @@ class ToolInstance(restful.Resource):
         else:
             return "Container not found", 404
 
-    def delete(self, toolPath):
-        """ Delete a tool instance """
+    # Delete an instance
+    def delete(self, id):
         args = id_parser.parse_args()
-        containerID = str(args['id'])
-        logging.debug("ToolInstance DELETE toolPath=" + toolPath + ", containerID=" + containerID) 
+
+        # Backwards compatibility - v1 used /instances/:toolPath?id= v2 uses /instances/:id
+        if args['id']:
+           containerID = str(args['id'])
+           toolPath = id
+        else: 
+           containerID = id
+           toolPath = instanceAttrs[containerID]["toolPath"]
+
+        logging.debug("Instance.delete toolPath=" + toolPath + ", containerID=" + containerID) 
 
         # Remove container
         cmd = 'docker rm -f -v '+containerID
@@ -88,41 +147,56 @@ class ToolInstance(restful.Resource):
 
         return containerID+" removed", 200
 
-    def post(self, toolPath):
-        """ Create a new instance of requested tool container """
+    # Create a new instance of a tool
+    def post(self, id):
+
+        toolPath = id
         args = post_parser.parse_args()
         cfg = config[toolPath]
-        #host = request.url_root[:request.url_root.find(":"+PORTNUM)]
         host = os.environ["NDSLABS_HOSTNAME"]
-        logging.debug("ToolInstance POST toolPath=" + toolPath + 
+        if args['source']:
+           source = str(args['source'])
+        else:
+           source = "clowder"
+
+        logging.debug("Instance.post toolPath=" + toolPath + 
              "\n\t dataset=" + str(args['dataset']) + 
              "\n\t datasetId=" + str(args['datasetId']) + 
-             "\n\t source=" + str(args['source']) + 
+             "\n\t source=" + source + 
              "\n\t key=" + str(args['key']) )
 
         # Create the tool container -P Publish all exposed ports
-        toolCmd = "docker create -P -v "+cfg['dataPath']+"/data "+cfg['dockerSrc']
-        logging.debug(toolCmd)
-        containerID = os.popen(toolCmd).read().rstrip()
-        logging.debug("CONTAINER ID: " + containerID)
+        try:
+           toolCmd = "docker create -P -v "+cfg['dataPath']+"/data "+cfg['dockerSrc']
+           logging.debug("Creating container: " + toolCmd)
+           containerID = os.popen(toolCmd).read().rstrip()
+           logging.debug("ContainerID: " + containerID)
+        except OSError as e:
+           return 500 
 
         # Do data transfer to container
-        if str(args['source']) == 'dataverse':
-            xferCmd = '/usr/local/bin/dataverse-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
-        else :
-            xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
-        logging.debug("xferCmd " + xferCmd)
-        os.popen(xferCmd).read().rstrip()
+        try:
+            xferCmd = '/usr/local/bin/'+ source +'-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+cfg['dataPath']+' '+containerID
+            logging.debug("Transfering data: " + xferCmd)
+            os.popen(xferCmd).read().rstrip()
+        except OSError as e:
+           return 500 
 
         # Start the requested tool container
-        startCmd = 'docker start '+containerID
-        logging.debug("startCmd " + startCmd)
-        os.popen(startCmd).read().rstrip()
+        try:
+            startCmd = 'docker start '+containerID
+            logging.debug("Starting container: " + startCmd)
+            os.popen(startCmd).read().rstrip()
+        except OSError as e:
+           return 500 
 
         # Get and remap port for tool
-        portCmd = "docker inspect --format '{{(index (index .NetworkSettings.Ports \""+cfg['mappedPort']+"\") 0).HostPort}}' "+containerID
-        logging.debug("portCmd " + portCmd)
-        port = os.popen(portCmd).read().rstrip()
+        try:
+            portCmd = "docker inspect --format '{{(index (index .NetworkSettings.Ports \""+cfg['mappedPort']+"\") 0).HostPort}}' "+containerID
+            logging.debug("Getting container port " + portCmd)
+            port = os.popen(portCmd).read().rstrip()
+        except OSError as e:
+           return 500 
 
         # Make a record of this container's URL for later reference
         currTime = arrow.now().isoformat()
@@ -133,7 +207,7 @@ class ToolInstance(restful.Resource):
             "port": port,
             "created": currTime,
             "ownerId": str(args['ownerId']),
-            "source": str(args['source']),
+            "source": source,
             "uploadHistory": [{
                 "url":str(args['dataset']),
                 "time": currTime,
@@ -154,19 +228,29 @@ class ToolInstance(restful.Resource):
         }, 201
 
     def put(self, toolPath):
-        """ Download another dataset into container """
+
         args = put_parser.parse_args()
-        containerID = str(args['id'])
-        logging.debug("ToolInstance PUT toolPath=" + toolPath + 
+
+        # Backwards compatibility - v1 used /instances/:toolPath?id= v2 uses /instances/:id
+        if args['id']:
+           id = str(args['id'])
+           toolPath = id
+        else: 
+           containerID = id
+
+        if args['source']:
+           source = str(args['source'])
+        else:
+           source = "clowder"
+
+        logging.debug("Instance.put containerID=" + containerID + 
+             "\n\ttoolPath=" + toolPath + 
              "\n\t dataset=" + str(args['dataset']) + 
              "\n\t datasetId=" + str(args['datasetId']) + 
              "\n\t key=" + str(args['key']) )
 
         # Do data transfer container in another container
-        if str(args['source']) == 'dataverse':
-            xferCmd = '/usr/local/bin/dataverse-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
-        else :
-            xferCmd = '/usr/local/bin/clowder-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
+        xferCmd = '/usr/local/bin/' + source + '-xfer.sh '+str(args['dataset'])+' '+str(args['datasetId'])+' '+str(args['key'])+' '+config[toolPath]['dataPath'] +  ' ' + containerID
         logging.debug("xferCmd " + xferCmd)
         os.popen(xferCmd).read().rstrip()
 
@@ -184,13 +268,12 @@ class ToolInstance(restful.Resource):
 
         return 204
 
-"""Main class for tool definitions, pulling necessary config vars from toolconfig.json"""
+# Main class for tool definitions, pulling necessary config vars from toolconfig.json
 class Toolbox(restful.Resource):
 
+    # Return a list of tools that can be instantiated.
     def get(self):
-        """ Get a list of eligible tool endpoints that can be called. If toolPath given, return details of specific tool """
-
-        logging.debug("Toolbox GET")
+        logging.debug("Toolbox.get")
         tools = {}
         for toolPath in config.keys():
           tools[toolPath] = {
@@ -200,37 +283,22 @@ class Toolbox(restful.Resource):
 
         return tools, 200
 
+    # Delete tool endpoint from config file 
     def delete(self):
-        """ Delete tool endpoint from config file """
+        logging.debug("Toolbox.delete")
         return 200
 
+    # Add new tool endpoint to config file 
     def post(self):
-        """ Add new tool endpoint to config file """
+        logging.debug("Toolbox.post")
         return 201
 
+    # Update existing tool endpoint in config file
     def put(self):
-        """ Update existing tool endpoint in config file """
+        logging.debug("Toolbox.put")
         return 200
 
-"""Used to fetch entire set of running instances for populating manager list"""
-class Instances(restful.Resource):
-
-    def get(self):
-        """ Return attributes of all running tool instances """
-        logging.debug("Instances GET")
-        instances = {}
-        for containerID in instanceAttrs:
-            instances[containerID] = instanceAttrs[containerID]
-
-            # Add some additional tool info from the config data before returning
-            cfg = config[instances[containerID]["toolPath"]]
-            instances[containerID]["toolName"] = cfg["toolName"]
-            instances[containerID]["description"] = cfg["description"]
-
-        return instances, 200
-
-
-"""Get configured tools from json file"""
+# Get configured tools from json file
 def getConfig(path=configPath):
     """config file should be a set of definition objects like so:
         {"toolPath": {
@@ -248,7 +316,7 @@ def getConfig(path=configPath):
     confFile.close()
     return config
 
-"""Get previously written instance attributes from json file, creating file if it doesn't exist"""
+# Get previously written instance attributes from json file, creating file if it doesn't exist
 def getInstanceAttrsFromFile(path=instancesPath):
     """instances file stores attributes of running instances so metadata is available after service restart:
         {"containerID": {
@@ -274,25 +342,25 @@ def getInstanceAttrsFromFile(path=instancesPath):
     instFile.close()
     return attrs
 
-"""Write current instanceAttrs object to file"""
+# Write current instanceAttrs object to file
 def writeInstanceAttrsToFile(path=instancesPath):
     # We don't care what the current contents are; they should either already be loaded or are outdated. Overwrite 'em.
     instFile = open(path, 'w')
     instFile.write(json.dumps(instanceAttrs))
     instFile.close()
     writeNginxConf()
-    reloadNginx()
 
-"""Read template"""
+# Read template
 def readTemplate(path):
+    logging.debug("readTemplate " + path)
     templFile = open(path)
     template = templFile.read()
     templFile.close()
     return template
 
-""" Write nginx conf"""
+# Write nginx conf
 def writeNginxConf():
-    print "Writing nginx conf"
+    logging.debug("writeNginxConf")
     nginxTmpl = Template(readTemplate(templatesPath + "nginx.tmpl"))
 
     locations = ""
@@ -309,7 +377,7 @@ def writeNginxConf():
     reloadNginx()
 
 def reloadNginx():
-    print "Reloading nginx"
+    logging.debug("reloadNginx")
     cmd = 'nginx -s reload'
     os.popen(cmd).read().rstrip()
 
@@ -319,16 +387,17 @@ instanceAttrs = getInstanceAttrsFromFile()
 
 # ENDPOINTS ----------------
 # /tools will fetch summary of available tools that can be launched
-api.add_resource(Toolbox, '/tools') # TODO: Allo /tools/<toolPath> to get more details about specific tool
+api.add_resource(Toolbox, '/tools') 
 
 # /instances will fetch the list of instances that are running on the server
 api.add_resource(Instances, '/instances')
 
-# /instances/toolPath fetches details of a particular instance, including URL, owner, history, etc.
-api.add_resource(ToolInstance, '/instances/<string:toolPath>')
+# /instances/id fetches details of a particular instance, including URL, owner, history, etc.
+# /instances/toolPath 
+api.add_resource(Instance, '/instances/<string:id>')
 
-# /logs should return docker logs for the requested toolPath TODO: remove?
-api.add_resource(DockerLog, '/logs')
+# /logs should return docker logs for the requested container
+api.add_resource(DockerLog, '/logs/<string:id>')
 # ----------------------------
 
 if __name__ == '__main__':
