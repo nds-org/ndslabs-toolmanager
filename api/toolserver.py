@@ -152,12 +152,10 @@ class Instance(restful.Resource):
 
         args = post_parser.parse_args()
         # Backwards compatibility - v1 used /instances/:toolPath?id= v2 uses /instances/:id
-        if args['id']:
-           containerID = str(args['id'])
+        if cfg[id]:
            toolPath = id
         else: 
-           containerID = id
-           toolPath = instanceAttrs[containerID]["toolPath"]
+           toolPath = str(args['toolPath'])
 
         cfg = config[toolPath]
         host = os.environ["NDSLABS_HOSTNAME"]
@@ -234,7 +232,7 @@ class Instance(restful.Resource):
            'URL': "https://" + host+"/"+containerID[0:10]+"/"
         }, 201
 
-    def put(self, toolPath):
+    def put(self, id):
 
         args = put_parser.parse_args()
         # Backwards compatibility - v1 used /instances/:toolPath?id= v2 uses /instances/:id
