@@ -150,8 +150,15 @@ class Instance(restful.Resource):
     # Create a new instance of a tool
     def post(self, id):
 
-        toolPath = id
         args = post_parser.parse_args()
+        # Backwards compatibility - v1 used /instances/:toolPath?id= v2 uses /instances/:id
+        if args['id']:
+           containerID = str(args['id'])
+           toolPath = id
+        else: 
+           containerID = id
+           toolPath = instanceAttrs[containerID]["toolPath"]
+
         cfg = config[toolPath]
         host = os.environ["NDSLABS_HOSTNAME"]
         if args['source']:
@@ -230,13 +237,13 @@ class Instance(restful.Resource):
     def put(self, toolPath):
 
         args = put_parser.parse_args()
-
         # Backwards compatibility - v1 used /instances/:toolPath?id= v2 uses /instances/:id
         if args['id']:
-           id = str(args['id'])
+           containerID = str(args['id'])
            toolPath = id
         else: 
            containerID = id
+           toolPath = instanceAttrs[containerID]["toolPath"]
 
         if args['source']:
            source = str(args['source'])
