@@ -1,12 +1,49 @@
-FROM ncsa/toolserver:1.0
+#!/bin/bash
+#
+# Usage: docker build -t toolmanager .
+#
 
-COPY ./toolconfig.json /usr/local/data
-COPY ./templates /usr/local/data/templates
-COPY ./toolserver /usr/local/bin
-COPY ./clowder-xfer /usr/local/bin
-COPY ./entrypoint.sh /entrypoint.sh
+FROM ubuntu:xenial
 
-RUN apt-get update -y && apt-get install curl nginx vim wget -y
+# Managed Data Tools
+COPY data /usr/local/data/
+
+# ToolManager API
+COPY api /usr/local/bin/
+COPY entrypoint.sh /entrypoint.sh
+
+# Install nginx / Node.js / npm
+RUN apt-get -qq update && \
+    apt-get -qq install \
+      curl \
+      docker.io \
+      git \
+      iptables \
+      nginx \
+      npm \
+      python \
+      python-dev \
+      python-pip \
+      sudo \
+      unzip \
+      vim \
+      wget && \
+    curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash - && \
+    apt-get -qq install nodejs && \
+    ln -s /usr/local/bin/node /usr/local/bin/nodejs && \
+    apt-get -qq autoremove && \
+    apt-get -qq autoclean && \
+    apt-get -qq clean all && \
+    rm -rf /var/cache/apk/* /tmp/*
+    
+# Install npm / bower dependencies + ToolMaanger UI
+COPY js /usr/share/nginx/html/
+RUN cd /usr/share/nginx/html/ && \
+    npm install -g bower && \
+    npm install && \
+    bower install --config.interactive=false --allow-root && \
+    rm -rf /tmp/*
+
 
 ENV DOCKER_BUCKET get.docker.com
 ENV DOCKER_VERSION 1.10.3
@@ -19,11 +56,11 @@ RUN set -x \
     && docker -v \
     && wget "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" -O /usr/local/bin/dind \
     && chmod +x /usr/local/bin/dind \
-    && pip install jinja2 
+    && pip install flask-restful \
+    && pip install jinja2 \
+    && pip install arrow 
      
-
 ENV TOOLSERVER_PORT 8083
-
 EXPOSE 8082
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["toolserver"]
