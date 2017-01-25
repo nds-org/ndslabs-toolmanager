@@ -7,6 +7,7 @@ if [ "$1" = "toolserver" ]; then
         --host=unix:///var/run/docker.sock \
         --host=tcp://0.0.0.0:2375 \
         --registry-mirror=http://docker-cache.default:5001 \
+        --mtu=1404 \
         --storage-driver=overlay  > dind.log 2>&1 &
 
    nginx &
