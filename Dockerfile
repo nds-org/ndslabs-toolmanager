@@ -10,7 +10,7 @@ COPY data /usr/local/data/
 
 # ToolManager API
 COPY api /usr/local/bin/
-COPY entrypoint.sh /entrypoint.sh
+COPY dockerd-entrypoint.sh /dockerd-entrypoint.sh
 
 # Install nginx / Node.js / npm
 RUN apt-get -qq update && \
