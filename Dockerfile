@@ -62,5 +62,5 @@ RUN set -x \
      
 ENV TOOLSERVER_PORT 8083
 EXPOSE 8082
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["toolserver"]
+ENTRYPOINT ["/dockerd-entrypoint.sh"]
+CMD []
