@@ -23,4 +23,4 @@ nohup "$@" </dev/null >dind.log 2>&1 &
 
 nginx &
 
-toolserver.py &
+toolserver.py
