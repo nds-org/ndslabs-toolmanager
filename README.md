@@ -1,6 +1,6 @@
-# ToolManager
+# Tool Manager
 
-The ToolManager provides the ability to configure and launch analysis environments, such as RStudio and Jupyter Notebooks, pulling data from repository software such as Clowder. It began as a feature of the [TERRA-REF](http://terraref.org) project to provide analysis capabilities in Clowder.
+The Tool Manager provides the ability to configure and launch analysis environments, such as RStudio and Jupyter Notebooks, pulling data from repository software such as Clowder. It began as a feature of the [TERRA-REF](http://terraref.org) project to provide analysis capabilities in Clowder.
 
 ## Build
 ```bash
@@ -13,7 +13,7 @@ docker run -it -p 8082:8082 ndslabs/toolmanager
 ```
 
 ## How It Works
-The ToolManager itself runs as a Docker-Docker-Docker container that can spawn other containers. The Docker-in-Docker paradigm was introduced to ensure that any running instances are cleaned up / deleted if the host container goes down. Otherwise, we are left with dangling containers that must be cleaned up / deleted manually.
+The ToolManager itself runs as a Docker-in-Docker container that can spawn other containers. The Docker-in-Docker paradigm was introduced to ensure that any running instances are cleaned up / deleted if the host container goes down. Otherwise, we are left with dangling containers that must be cleaned up / deleted manually.
 
 Two REST API Endpoints provide restricted access to the underlying Docker daemon: **/tools** and **/instances**
 
